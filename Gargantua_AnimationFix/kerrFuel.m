@@ -12,15 +12,13 @@ uStation = [1/sqrt(-stationMetric(1,1)); 0; 0];
 % Inward at departure (negative radial component); outward at docking.
 % Both have the same rapidity relative to the stationary station.
 uTransferStation = [tr.utStation; -tr.urStation; tr.uphiStation];
-gamma1 = max(1,-uStation'*stationMetric*uTransferStation);
-eta1 = acosh(gamma1);
+eta1 = relativeRapidity(uStation,uTransferStation,stationMetric);
 
 circular = kerrCircular(rc,cfg.a);
 metricOrbit = kerrMetric(rc,cfg.a);
 uTransferOrbit = [tr.utPeri; 0; tr.uphiPeri];
 uCircular = [circular.ut; 0; circular.uphi];
-gamma2 = max(1,-uTransferOrbit'*metricOrbit*uCircular);
-eta2 = acosh(gamma2);
+eta2 = relativeRapidity(uTransferOrbit,uCircular,metricOrbit);
 
 fuel.rapidities = [eta1,eta2,eta2,eta1];
 fuel.totalRapidity = sum(fuel.rapidities);
@@ -45,4 +43,14 @@ for i = 4:-1:1
     fuel.perBurn(i) = mBefore-mAfter;
     mAfter = mBefore;
 end
+end
+
+function eta = relativeRapidity(u1,u2,g)
+% Rapidity between two unit four-velocities.  gammaRel = -u1'*g*u2 cancels
+% badly here (components ~1e3, gammaRel ~1), and acosh(1+tiny) then
+% magnifies the round-off.  For unit vectors (u1-u2)'*g*(u1-u2) =
+% 2*(gammaRel-1), so use the difference and log1p instead.
+du = u1-u2;
+x = max(0,0.5*(du'*g*du));          % gammaRel - 1
+eta = log1p(x+sqrt(x*(x+2)));       % = acosh(1+x)
 end
